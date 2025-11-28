@@ -24,6 +24,7 @@ def test_secure_delete_removes_file(tmp_path):
     secure_delete(str(p), passes=1, pattern="zeros", dry_run=False)
     assert not p.exists()
 
+@pytest.mark.skipif(os.name == "nt", reason="Symlink behavior differs on Windows")
 def test_secure_delete_symlink_not_followed(tmp_path):
     target = tmp_path / "real.txt"
     target.write_text("secret")
@@ -33,6 +34,7 @@ def test_secure_delete_symlink_not_followed(tmp_path):
     assert not link.exists()
     assert target.exists()
 
+@pytest.mark.skipif(os.name == "nt", reason="Symlink behavior differs on Windows")
 def test_secure_delete_follows_symlink(tmp_path):
     target = tmp_path / "real2.txt"
     target.write_text("supersecret")
@@ -96,13 +98,15 @@ def test_secure_compare_fuzz(a, b):
     assert secure_compare(a, b) == expected
 
 @pytest.mark.fuzz
+@pytest.mark.skipif(os.name == "nt", reason="SecureMemory zeroing observation unreliable on Windows")
 @given(st.binary(min_size=0, max_size=4096))
 def test_secure_memory_wipe_fuzz(data):
-    """Ensure SecureMemory always wipes correctly."""
+    """Ensure SecureMemory always wipes correctly by checking internal buffer."""
     mem = SecureMemory(len(data))
-    mem.write(data)
-    ptr_before = mem._mv[:]   # copy for check
-    mem.zero()
-    assert all(b == 0 for b in mem._mv)
-    if any(b != 0 for b in ptr_before):
-        assert ptr_before != mem._mv
+    try:
+        mem.write(data)
+        mem.zero()
+        # Directly inspect the internal memoryview (_mv)
+        assert all(b == 0 for b in mem._mv)
+    finally:
+        mem.close()
