@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "securewipe"
+version = "0.1.0"
+description = "A Python library for secure file deletion, in-memory secret handling, and cryptographic erasure."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Ordu Stephen Chinedu", email = "fordstphn@gmail.com" }
+]
+keywords = ["security", "privacy", "encryption", "secure deletion", "data sanitization"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Security :: Cryptography",
+    "Topic :: System :: Archiving",
+]
+
+# Mandatory runtime dependencies
+dependencies = [
+    "psutil>=5.9.0",  # for device detection, memory info
+]
+
+# Optional dependencies
+[project.optional-dependencies]
+crypto = ["pynacl>=1.5.0"]  # libsodium/PyNaCl support
+
+[project.urls]
+Homepage = "https://github.com/yourname/securewipe"
+Documentation = "https://github.com/yourname/securewipe"
+Repository = "https://github.com/yourname/securewipe"
+
+# setuptools-specific options
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["securewipe"]
+
+[tool.setuptools.package-data]
+securewipe = ["*.so", "*.dll"]  # placeholder for compiled extensions (e.g., C extension in future)
+
+# Optional: Include type hints if you add them
+[tool.setuptools.packages.find]
+where = ["src"]
