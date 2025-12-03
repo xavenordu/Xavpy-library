@@ -23,19 +23,26 @@ classifiers = [
 
 # Mandatory runtime dependencies
 dependencies = [
-    "psutil>=5.9.0"
+    "psutil>=5.9.0",
+    "cryptography>=41.0.0"
 ]
 
 # Optional dependencies
 [project.optional-dependencies]
 crypto = ["pynacl>=1.5.0"]
 
+# Development & testing dependencies
+dev = [
+    "pytest>=7.4.0",
+    "hypothesis>=6.0.0",
+    "cryptography>=41.0.0"
+]
+
 [project.urls]
 Homepage = "https://github.com/xavenordu/Xavpy-library"
 Documentation = "https://github.com/xavenordu/Xavpy-library"
 Repository = "https://github.com/xavenordu/Xavpy-library"
 
-# setuptools-specific options
 [tool.setuptools]
 package-dir = { "" = "src" }
 
@@ -43,4 +50,4 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-securewipe = ["*.so", "*.dll"]  # placeholder for compiled extensions
+securewipe = ["*.so", "*.dll"]
