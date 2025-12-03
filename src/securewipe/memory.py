@@ -22,6 +22,8 @@ import typing as _typing
 import logging
 import contextlib
 
+import ctypes
+
 from . import _sodium
 
 logger = logging.getLogger(__name__)
@@ -51,9 +53,30 @@ class _FallbackBuffer:
         return bytes(self._mv[offset: offset + length])
 
     def zero(self) -> None:
-        if len(self._mv):
-            self._mv[:] = b"\x00" * len(self._mv)
-
+        """Deterministic in-place zeroing of the underlying bytearray buffer."""
+        if not self._buf:
+            return
+        try:
+            # Use ctypes.memset on the actual bytearray buffer to guarantee in-place write
+            buf_len = len(self._buf)
+            if buf_len == 0:
+                return
+            # Obtain address of the bytearray buffer
+            c_arr = (ctypes.c_char * buf_len).from_buffer(self._buf)
+            addr = ctypes.addressof(c_arr)
+            ctypes.memset(addr, 0, buf_len)
+            # keep memoryview in sync; we mutated in-place so _mv already reflects it
+            return
+        except Exception:
+            # Fallback to safe python-level write (slower but correct)
+            try:
+                for i in range(len(self._mv)):
+                    self._mv[i] = 0
+            except Exception:
+                # last resort: replace buffer (not ideal but safe)
+                self._buf[:] = b"\x00" * len(self._buf)
+                self._mv = memoryview(self._buf).cast("B")
+                
     def tobytes(self) -> bytes:
         return self._mv.tobytes()
 
@@ -147,18 +170,74 @@ class SecureMemory:
         # Prefer libsodium memzero if used
         if self._use_sodium:
             try:
+                # Primary: libsodium's own memzero (best-effort)
                 _sodium.sodium_memzero(self._ptr, self.size)
-                return
             except Exception as e:
                 logger.debug("sodium_memzero failed: %s", e)
 
-        # Fallback: memoryview write
-        try:
-            if self.size > 0:
-                self._mv[:] = b"\x00" * self.size
-        except Exception as e:
-            logger.error("Fallback zeroing failed: %s", e)
+            # Best-effort double-write: if we have a Python-visible buffer, memset it too.
+            # This ensures Python-level views (memoryview) observe the change.
+            try:
+                if getattr(self, "_mv", None) is not None:
+                    # attempt to find a writable buffer object (bytearray) backing the mv
+                    mv = self._mv
+                    # Try to access mv.obj (object that owns the buffer) - may vary by Python impl
+                    buf_obj = getattr(mv, "obj", None)
+                    if isinstance(buf_obj, (bytearray, memoryview)):
+                        # If it's memoryview, try to get its object
+                        if isinstance(buf_obj, memoryview):
+                            try:
+                                buf_obj = buf_obj.obj
+                            except Exception:
+                                buf_obj = None
+                        if isinstance(buf_obj, bytearray):
+                            c_arr = (ctypes.c_char * len(buf_obj)).from_buffer(buf_obj)
+                            ctypes.memset(ctypes.addressof(c_arr), 0, len(buf_obj))
+                            return
+                    # If mv exposes a buffer that allows from_buffer, try that
+                    try:
+                        buf_len = len(mv)
+                        if buf_len:
+                            c_arr = (ctypes.c_char * buf_len).from_buffer(mv)
+                            ctypes.memset(ctypes.addressof(c_arr), 0, buf_len)
+                            return
+                    except Exception:
+                        # ignore and fallback below
+                        pass
+            except Exception:
+                pass
 
+            # If we reach here, we tried sodium and ctypes and they failed; fall through
+            # to the generic fallback below.
+
+        # Fallback: try fast ctypes-based zero on fallback buffer
+        try:
+            if getattr(self, "_fallback", None) is not None and self._fallback is not None:
+                self._fallback.zero()
+                return
+        except Exception:
+            logger.debug("fallback.zero() attempt failed, trying safe python fallback")
+
+        # Last resort: in-place memoryview write (keeps same object identity)
+        try:
+            if self.size > 0 and getattr(self, "_mv", None) is not None:
+                mv = self._mv
+                # try to write using slice assignment (should be in-place)
+                mv[:] = b"\x00" * len(mv)
+                return
+        except Exception as e:
+            logger.debug("memoryview slice zero failed: %s", e)
+
+        # Very slow but reliable fallback: byte-by-byte
+        try:
+            if getattr(self, "_mv", None) is not None:
+                mv = self._mv
+                for i in range(len(mv)):
+                    mv[i] = 0
+        except Exception:
+            # Nothing more to do; best-effort only
+            logger.error("SecureMemory: final zero fallback failed", exc_info=True)
+            
     # --- Close / free ---
     def close(self) -> None:
         if self._closed:
@@ -257,3 +336,4 @@ def secure_alloc(size: int) -> _typing.ContextManager[SecureMemory]:
 
 def secret_bytes(data: bytes) -> SecureMemory:
     return SecureMemory.from_bytes(data)
+
