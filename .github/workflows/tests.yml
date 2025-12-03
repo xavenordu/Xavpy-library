@@ -3,6 +3,7 @@ name: CI Tests
 on:
   push:
   pull_request:
+  workflow_dispatch:  # Manual trigger
 
 jobs:
   test:
@@ -11,7 +12,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macOS first, then Linux and Windows
+        os: [macos-latest, ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
@@ -30,4 +32,12 @@ jobs:
           pip install .
 
       - name: Run tests
-        run: pytest -vv
+        run: |
+          mkdir -p test-reports
+          pytest -vv --junitxml=test-reports/results-${{ matrix.os }}-${{ matrix.python-version }}.xml
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports-${{ matrix.os }}-${{ matrix.python-version }}
+          path: test-reports/
