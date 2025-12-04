@@ -4,9 +4,9 @@ import pytest
 from pathlib import Path
 from hypothesis import given, strategies as st
 
-from securewipe.file import secure_delete, wipe_free_space, FileAccessError
-from securewipe.utils import secure_compare
-from securewipe.memory import SecureMemory
+from zeroizepy.file import secure_delete, wipe_free_space, FileAccessError
+from zeroizepy.utils import secure_compare
+from zeroizepy.memory import SecureMemory
 
 # ---------------------------------------------------------------------------
 # File Module Tests
@@ -110,3 +110,4 @@ def test_secure_memory_wipe_fuzz(data):
         assert all(b == 0 for b in mem._mv)
     finally:
         mem.close()
+
