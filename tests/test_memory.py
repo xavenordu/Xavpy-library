@@ -3,7 +3,7 @@ import sys
 import pytest
 from hypothesis import given, strategies as st, assume
 
-from securewipe.memory import (
+from zeroizepy.memory import (
     SecureMemory,
     secure_alloc,
     secret_bytes,
@@ -155,3 +155,4 @@ def test_secure_memory_zero_fuzz(data):
         s.close()
     with pytest.raises(SecureMemoryClosed):
         s.read(1)
+
