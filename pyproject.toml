@@ -3,16 +3,16 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "securewipe"
+name = "zeroizepy"
 version = "1.1.0"
-description = "A Python library for secure file deletion, in-memory secret handling, and cryptographic erasure."
+description = "A Python library for secure file deletion, in-memory secret handling and cryptographic erasure."
 readme = "README.md"
 requires-python = ">=3.8"
 license = { file = "LICENSE" }
 authors = [
     { name = "Ordu Stephen Chinedu", email = "fordstphn@gmail.com" }
 ]
-keywords = ["security", "privacy", "encryption", "secure deletion", "data sanitization"]
+keywords = ["security", "privacy", "encryption", "secure deletion", "data sanitization", "cryptography"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -50,4 +50,5 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-securewipe = ["*.so", "*.dll"]
+zeroizepy = ["*.so", "*.dll"]
+
