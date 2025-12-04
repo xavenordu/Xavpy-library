@@ -1,14 +1,17 @@
 # SecureWipe
 
-High-assurance secure deletion, secure memory handling, and cryptographic erasure for Python.
+High-assurance secure deletion, secure memory handling and cryptographic erasure for Python.
 
-SecureWipe provides a full suite of secure-by-design primitives:
+SecureWipe provides a modern, cross-platform suite of primitives for handling sensitive data safely.
+It is designed for applications that require defense-in-depth: password managers, HSM glue code, data-at-rest protection, secure messaging and high-security Python systems.
 
-* Locked, zeroizable memory
-* File wiping & free-space wiping
+It includes:
+
+* Locked, zeroizable RAM (SecureMemory)
+* Secure file wiping (multi-pass overwrite, free-space wiping)
 * Cryptographic erasure (destroy a key → destroy the data)
 * AES-GCM authenticated encryption helpers
-* Secure temporary sessions
+* Secure temporary sessions (auto-delete on exit)
 
 ---
 
@@ -22,32 +25,39 @@ pip install securewipe
 
 # Overview of Protection Layers
 
-SecureWipe implements five layers of protection:
+SecureWipe implements five protection layers:
 
 1. **Secure Memory**
+   * Explicitly zeroizable buffers
+   * Locked RAM (non-swappable when libsodium is available)
+   * Safe handling for sensitive in-process secrets
+   * Guaranteed wipe on .close() or context exit
 
-   * Data stored in locked RAM (`SecureMemory`), explicitly zeroized on close.
-   * Optionally uses libsodium for guarded, non-swappable pages.
+3. **File Wiping**
 
-2. **File Wiping**
-
-   * Multi-pass secure deletion of files (`secure_delete()`).
+   * Multi-pass secure deletion: random or fixed patterns (`secure_delete()`).
+   * Full overwrite of file contents before unlinking
    * Free-space wiping (`wipe_free_space()`) to overwrite unallocated disk blocks.
+   * Symlink-aware deletion controls
 
-3. **Cryptographic Erasure**
+4. **Cryptographic Erasure**
 
-   * AES-GCM encryption with secure keys (`CryptoKey`).
+   * AES-GCM encryption with authenticated metadata (`CryptoKey`).
+   * `CryptoKey` objects that can be destroyed in memory
    * Destroy the key → all encrypted data irreversibly lost.
+   * Designed for SSDs, COW filesystems, and other overwrite-hostile storage
 
-4. **Secure Temporary Sessions**
+5. **Secure Temporary Sessions**
 
-   * `SecureSession` tracks temporary files and secrets.
+   * `SecureSession` tracks temporary files, memory regions and secrets.
    * Automatically zeroes memory and deletes files on exit.
+   * Ideal for one-shot secure operations
 
-5. **OS-Level Secure Erase Wrappers**
+6. **OS-Level Erase Wrappers (Advanced)**
 
-   * Placeholder wrappers for `hdparm`, NVMe format, diskutil, BitLocker.
-   * Extremely dangerous if misused; intended for advanced users only.
+   * Interfaces for: hdparm, NVMe Secure Erase, APFS diskutil, BitLocker
+   * Extremely dangerous and destructive if misused — disabled by default
+   * Intended for expert operators only
 
 ---
 
@@ -147,8 +157,9 @@ with SecureSession() as session:
 | ------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------ |
 | Symlink Handling               | Fully supported; `follow_symlinks` honored     | Some behaviors differ; tests skipped where behavior differs                    |
 | Sparse File Detection          | Heuristics applied                             | Sparse heuristics differ; warnings may differ                                  |
-| `chmod(0)` & Permission Errors | Enforced; deletion may raise `FileAccessError` | Behavior differs; some tests skipped                                           |
+| `chmod(0)` Permission Model | Enforced; deletion may raise `FileAccessError` | Behavior differs; some tests skipped                                           |
 | SecureMemory Zeroing           | Zeroing observable in tests                    | Observing zeroing is unreliable due to Python memory copies and OS protections |
+| Memory Locking          | `mlock` available (libsodium recommended)                    | `VirtualLock` less effective; libsodium strongly preferred|
 
 
 * **Python Object Copies:** Immutable objects (`bytes`, `str`) cannot be zeroed. Prefer `bytearray` or `memoryview`.
@@ -161,9 +172,32 @@ with SecureSession() as session:
 
 
 **Important Notes:**
+SecureWipe improves security but cannot defeat OS-level guarantee gaps or Python’s memory model. Important limitations:
 
-* Avoid exposing raw Python bytes from `SecureMemory` (`get_bytes()`), as Python copies cannot be securely zeroed.
-* Always use the `close()` or context manager to guarantee memory zeroing.
+**Python Memory Model**
+* Immutable types (bytes, str) cannot be zeroed.
+* Some objects may be copied by Python internally.
+* Use `bytearray` and `memoryview` for sensitive data.
+
+**Libsodium Recommended**
+* Libsodium Recommended
+* Enables non-swappable memory
+* Protects against overreads/overwrites
+
+**Filesystem Constraints**
+* SSDs, APFS/ZFS snapshots, btrfs COW, and journaling FSes may retain pre-image data.
+* Free-space wiping mitigates but does not guarantee full erasure.
+* For absolute erasure → cryptographic erase.
+
+**Garbage Collection**
+* Python may temporarily retain freed buffers before reuse.
+
+**OS-Level Erase**
+* Commands like hdparm and NVMe secure erase can brick disks.
+* Disabled by default; require explicit opt-in.
+
+**Always zero and close secrets**
+* Use context managers or .close() to guarantee cleanup.
 
 ---
 
@@ -173,10 +207,11 @@ with SecureSession() as session:
 pytest
 ```
 
-Tests may skip some features on Windows due to OS differences.
+Some tests skip on Windows due to OS Differences.
 
 ---
 
 # License
 
 MIT License — free for commercial, open-source, academic, and integrated use.
+
