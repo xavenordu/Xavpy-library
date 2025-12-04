@@ -1,25 +1,26 @@
 # Use official Python image (Debian-based Linux)
 FROM python:3.12-slim
 
-# Install OS-level tools (optional: e.g., gcc for compiled dependencies)
+# Install build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+        build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Create work directory
+# Set working directory
 WORKDIR /app
 
-# Copy project files (adjust if your project structure is different)
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Copy project
 COPY . /app
 
-# Install project dependencies
-# If you have a requirements.txt:
-# RUN pip install -r requirements.txt
-# Otherwise install package in editable/development mode
-RUN pip install -e .
+# Install project + dev dependencies
+RUN pip install .[dev]
 
-# Install test dependencies
-RUN pip install pytest pytest-cov hypothesis cryptography
+# Set environment variables for pytest
+ENV PYTHONUNBUFFERED=1
+ENV PYTEST_ADDOPTS="--maxfail=5 --disable-warnings -q"
 
-# Command to run tests automatically when container starts
-CMD ["pytest", "-q"]
+# Run tests by default
+CMD ["pytest"]
