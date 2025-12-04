@@ -4,10 +4,10 @@ import pytest
 from pathlib import Path
 from hypothesis import given, strategies as st
 
-from securewipe.file import secure_delete, wipe_free_space, FileAccessError
-from securewipe.utils import secure_compare
-from securewipe.memory import SecureMemory, SecureMemoryClosed
-from securewipe.session import SecureSession
+from zeroizepy.file import secure_delete, wipe_free_space, FileAccessError
+from zeroizepy.utils import secure_compare
+from zeroizepy.memory import SecureMemory, SecureMemoryClosed
+from zeroizepy.session import SecureSession
 
 # ---------------------------------------------------------------------------
 # File Module Tests
@@ -144,3 +144,4 @@ def test_secure_session_combined_usage():
     # Secret memory closed
     with pytest.raises(SecureMemoryClosed):
         secret.read(1)
+
