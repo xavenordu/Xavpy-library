@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import platform
 
-from securewipe import (
+from zeroizepy import (
     linux_hdparm_secure_erase,
     linux_nvme_secure_erase,
     macos_diskutil_secure_erase,
@@ -47,3 +47,4 @@ def test_windows_bitlocker_destroy_volume_keys(monkeypatch):
     monkeypatch.setattr("shutil.which", lambda cmd: "C:\\Windows\\System32\\manage-bde.exe")
     with pytest.raises(NotImplementedError):
         windows_bitlocker_destroy_volume_keys("C:")
+
