@@ -1,7 +1,7 @@
 import pytest
 from hypothesis import given, strategies as st, assume
 
-from securewipe.crypto import (
+from zeroizepy.crypto import (
     CryptoKey,
     encrypt_data,
     decrypt_data,
@@ -152,4 +152,5 @@ def test_decrypt_invalid_ct_fuzz():
         assert isinstance(e, ValueError)
     else:
         # If no exception is raised, the test should fail
+
         assert False, "decrypt_data did not raise an exception for invalid ciphertext"
